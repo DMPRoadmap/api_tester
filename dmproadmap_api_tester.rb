@@ -1,12 +1,13 @@
 require 'httparty'
 
 HOST = ARGV[0]
-CLIENT_ID = ARGV[1]
-CLIENT_SECRET = ARGV[2]
+NAME = ARGV[1]
+CLIENT_ID = ARGV[2]
+CLIENT_SECRET = ARGV[3]
 DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
   'Accept': 'application/json',
-  'Server-Agent': "dmptool (#{CLIENT_ID})"
+  'Server-Agent': "#{NAME} (#{CLIENT_ID})"
 }
 
 def retrieve_auth_token
@@ -66,7 +67,7 @@ def retrieve_plans(token:, page: 1)
   resp.code == 200 ? JSON.parse(resp.body) : nil
 end
 
-if ARGV.any? && ARGV.length == 3
+if ARGV.any? && ARGV.length == 4
   # Authenticate
   token = retrieve_auth_token
   if token.is_a?(Hash)
@@ -84,6 +85,6 @@ if ARGV.any? && ARGV.length == 3
     # You can then add further tasks
   end
 else
-  p "Missing essential information. This script requires 3 arguments. The host (e.g. https://my.org.edu), your client_id and the client_secret."
-  p "Please retry with `ruby dmproadmap_api_tester.rb http://localhost:3000 12345 abcdefg`"
+  p "Missing essential information. This script requires 3 arguments. The host (e.g. https://my.org.edu), your client name, client_id and the client_secret."
+  p "Please retry with `ruby dmproadmap_api_tester.rb http://localhost:3000 dmptool 12345 abcdefg`"
 end
