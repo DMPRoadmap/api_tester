@@ -85,6 +85,6 @@ if ARGV.any? && ARGV.length == 4
     # You can then add further tasks
   end
 else
-  p "Missing essential information. This script requires 3 arguments. The host (e.g. https://my.org.edu), your client name, client_id and the client_secret."
+  p "Missing essential information. This script requires 4 arguments. The host (e.g. https://my.org.edu), your client name, client_id and the client_secret."
   p "Please retry with `ruby dmproadmap_api_tester.rb http://localhost:3000 dmptool 12345 abcdefg`"
 end
