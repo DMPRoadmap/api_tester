@@ -1,0 +1,54 @@
+<h1>DMPRoadmap API Testing</h1>
+
+<h2>Target System Information</h2>
+
+<p>This application will send API requests to the host you specify below. You must use the credentials for that host.</p>
+<p>The Response will be displayed below after you click on an action.</p>
+
+<form action="/test" method="POST">
+  <input type="hidden" name="token" value="<%= @token %>"/>
+
+  <div>
+    <label for="host_name">Host</label>
+    <input type="url" name="host_name" value="<%= params['host_name'] %>"/>
+  </div>
+  <div>
+    <label for="client_id">Client Id</label>
+    <input type="text" name="client_id" value="<%= params['client_id'] %>"/>
+  </div>
+  <div>
+    <label for="client_secret">Client Secret</label>
+    <input type="text" name="client_secret" value="<%= params['client_secret'] %>"/>
+  </div>
+
+  <div class="errors"><%= @error %></div>
+
+  <h3>API V1 Tests</h3>
+  <div><input type="submit" name="post+api_v1_authenticate" value="Authenticate"/></div>
+  <% unless @token.nil? %>
+    <div><input type="submit" name="get+api_v1_templates" value="Fetch Templates"/></div>
+    <div><input type="submit" name="get+api_v1_plans" value="Fetch Plans"/></div>
+  <% end %>
+
+  <h3>API V2 Tests</h3>
+  <div><input type="submit" name="post+oauth_token" value="Authenticate"/></div>
+  <% unless @token.nil? %>
+    <div><input type="submit" name="get+api_v2_templates" value="Fetch Templates"/></div>
+    <div><input type="submit" name="get+api_v2_plans" value="Fetch Plans"/></div>
+    <div><input type="submit" name="get+oauth_authorize" value="Authorize User (OAuth)"/></div>
+    <div><input type="submit" name="get+api_v2_plans" value="Fetch User's Plans (OAuth)"/></div>
+  <% end %>
+</form>
+
+<% unless @data.nil? %>
+  <h3>Results</h3>
+  <div>
+    <ul>
+      <li><strong>Target:</strong> <%= @target %></li>
+      <li><strong>Request data:</strong> <%= pp @payload %></li>
+      <li><strong>Request headers:</strong> <%= pp @headers %></li>
+      <li><strong>Token:</strong> <%= @token %></li>
+      <li><strong>Response:</strong> <%= pp @data %></li>
+    </ul>
+  </div>
+<% end %>
