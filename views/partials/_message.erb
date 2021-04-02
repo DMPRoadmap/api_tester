@@ -1,0 +1,10 @@
+<% unless @error.nil? %>
+  <div class="message errors">
+    <%= @error %>
+  </div>
+<% end %>
+<% unless @data.nil? %>
+  <div class="message success">
+    Success! See below for details of the response from the API.
+  </div>
+<% end %>

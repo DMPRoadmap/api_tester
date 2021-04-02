@@ -1,0 +1,24 @@
+<h1>DMPRoadmap API Testing</h1>
+
+<h2>Please specify the target host and the version of the API you would like to test.</h2>
+
+<form action="/test_it" method="POST">
+  <div>
+    <label for="host_name">Host:</label>
+    <input type="url" name="host_name" value="<%= @inputs[:host_name] || 'http://localhost:3000' %>"/>
+  </div>
+  <div>
+    <label for="api_version">Version:</label>
+    <select name="api_version">
+      <option value="">Please select</option>
+      <option value="v0">V0</option>
+      <option value="v1">V1</option>
+      <option value="v2">V2</option>
+    </select>
+  </div>
+  <div>
+    <input type="submit" value="Start testing"/>
+  </div>
+</form>
+
+<%= erb(:"partials/_message") %>

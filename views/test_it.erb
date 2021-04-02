@@ -1,0 +1,26 @@
+<%= erb(:"partials/_info") %>
+
+<a href="/">Home</a>
+<br>
+
+<form action="/test_it" method="POST">
+  <input type="hidden" name="api_version" value="<%= @version %>"/>
+  <input type="hidden" name="host_name" value="<%= @host %>"/>
+  <input type="hidden" name="auth_token" value="<%= @auth_token %>"/>
+  <input type="hidden" name="code" value="<%= @code %>"/>
+
+  <% if @require_credentials %>
+    <%= erb(:"partials/_client_credentials") %>
+  <% elsif @require_api_token %>
+    <%= erb(:"partials/_api_token") %>
+  <% end %>
+
+  <%= erb(:"partials/_message") %>
+
+  <h2>Tests</h2>
+  <%= erb(:"partials/_#{@version}_tests") %>
+</form>
+
+<% unless @data.nil? %>
+  <%= erb(:"partials/_results") %>
+<% end %>

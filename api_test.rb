@@ -1,116 +1,220 @@
 require 'sinatra'
 require 'httparty'
+require 'oauth2'
+
+enable :sessions
 
 get '/' do
-  erb :index
+  @inputs = {}
+  erb(:home)
 end
 
-post '/test' do
-  @inputs = params_to_hash
-
-  p "Parameters:"
-  pp @inputs
-
-  unless @inputs[:host_name] == '' ||
-         @inputs[:client_id] == '' ||
-         @inputs[:client_secret] == '' ||
-         @inputs[:test] == ''
-
-    target = "#{@inputs[:host_name]}/#{@inputs[:test]}"
-    @inputs[:test] == 'oauth/authorize' ? call_oauth_api(target: target) : call_api(target: target)
+post '/test_it' do
+  if @host == '' || @version == ''
+    @error = 'You must specify a Host and Version!'
+    redirect back
   else
-    @error = "You must specify the Host and Client credentials along with a specific test!"
+    process_params
+    send(:"#{@version}_test") unless @test_method.nil? || @test_path.nil?
+    erb(:test_it)
+  end
+end
+
+get '/oauth2/callback' do
+  process_params
+
+  target_test = session[:test]
+
+  session[:code] = params['code'] unless params['code'].nil?
+  oauth2_client
+
+  @auth_token = @oauth_client.auth_code.get_token(@code, redirect_uri: @redirect_uri)
+  resp = @auth_token.send(@test_method.to_sym, "#{@host}/api/#{@version}/#{@test_path}", body: @payload)
+
+  unless %w[200 201].include?(resp&.status.to_s)
+    @error = "Unexpected response from the API - #{resp&.status}. See below for details."
   end
 
-  erb(:index)
+  @data = JSON.parse(resp&.body)
+  erb(:test_it)
+rescue JSON::ParserError => e
+  @error = "Unable to parse the response to the oauth2/callback - #{e.message}"
+rescue StandardError => e
+  @error = "Unable to run this oauth2 test - #{e.message}"
 end
 
 private
 
-def call_api(target:)
-  return nil if target == "#{@inputs[:host_name]}/"
+def process_params
+  @host = params['host_name'] || session[:host_name]
+  @version = params['api_version'] || session[:api_version]
 
-  @payload = @inputs[:test_type] == 'authorization_code' ? authorization_code : client_credentials
-  @headers = default_headers.merge(token_for_header).compact
+  @require_api_token = %w[v0].include?(@version)
+  @require_credentials = %w[v1 v2].include?(@version)
 
-  resp = HTTParty.send(@inputs[:test_method], target, body: @payload.to_json, headers: @headers,
-                       debug: true, follow_redirects: true)
+  @api_token = params['api_token'] || session[:api_token]
+  @client_id = params['client_id'] || session[:client_id]
+  @client_secret = params['client_secret'] || session[:client_secret]
 
-  @error = "Unexpected response form host - #{resp&.code}. See below for details." unless resp&.code == 200
-  @data = JSON.parse(resp&.body)
-  @token = @data['access_token'] || @inputs[:token]
+  identify_test
+  @test_method = session[:test_method] if @test_method.nil?
+  @test_path = session[:test_path] if @test_path.nil?
+
+  @auth_token = params['auth_token']
+  @code = params['code']
+
+  @redirect_uri = 'http://localhost:4567/oauth2/callback'
+
+  # User entered content that should be sent through to the API test as :body
+  @payload = params['test_body'] || session[:payload]
+end
+
+def params_to_session
+  session[:host_name] = @host
+  session[:api_version] = @version
+
+  session[:api_token] = @api_token
+  session[:client_id] = @client_id
+  session[:client_secret] = @client_secret
+
+  session[:test_method] = @test_method
+  session[:test_path] = @test_path
+  session[:payload] = @payload
+end
+
+# Version Tests
+# -------------------------------------------------------------------------
+
+def v0_test
+  if @api_token.nil?
+    @error = 'You MUST provide an API token!'
+  else
+    @headers = default_headers.merge({ 'Authorization': "Token token=#{@api_token}" }).compact
+      resp = HTTParty.send(@test_method.to_sym,
+                           "#{@host}/api/v0/#{@test_path}",
+                           body: @payload,
+                           headers: @headers,
+                           follow_redirects: true,
+                           debug: true)
+
+      unless %w[200 201].include?(resp&.code.to_s)
+        @error = "Unexpected response from the API - #{resp&.code}. See below for details."
+      end
+      @data = JSON.parse(resp&.body)
+  end
 rescue JSON::ParserError => e
-  @error = "JSON Parse error in response body - #{e.message}"
-  nil
+  @error = "Unable to process response - #{e.message}"
 end
 
-# Call the Oauth Authorization enpoint
-def call_oauth_api(target:)
-  return nil if target == "#{@inputs[:host_name]}/"
+def v1_test
+  if @client_id.nil? || @client_secret.nil?
+    @error = 'You MUST provide a Client ID (or email) and Client Secret (or API token)!'
+  else
+    @auth_token = v1_auth
 
-  @payload = @inputs[:test_type] == 'authorization_code' ? authorization_code : client_credentials
-  @payload = @payload.merge({
-    redirect_uri: CGI.escape('http://localhost:4567/users/auth/callback'),
-    response_type: 'code',
-    scope: 'read',
-    state: @inputs[:token],
-    format: 'HTML'
-  })
-  @headers = { 'Accept': 'text/html,application/xhtml+xml,application/xml' }
+    unless @auth_token.nil?
+      @headers = default_headers.merge(token_for_header).compact
+      resp = HTTParty.send(@test_method.to_sym,
+                           "#{@host}/api/v1/#{@test_path}",
+                           body: @payload,
+                           headers: @headers,
+                           follow_redirects: true,
+                           debug: true)
 
-  target = "#{target}?#{@payload.map { |k, v| "#{k}=#{v}" }.join('&')}"
-
-p "TARGET: #{target}"
-p "HEADERS:"
-pp headers
-
-  resp = HTTParty.get(target, headers: @headers, debug: true, follow_redirects: true)
-
-  @error = "Unexpected response form host - #{resp&.code}. See below for details." unless resp&.code == 200
-  @data = JSON.parse(resp&.body)
-  @token = @data['access_token'] || @inputs[:token]
+      unless %w[200 201].include?(resp&.code.to_s)
+        @error = "Unexpected response from the API - #{resp&.code}. See below for details."
+      end
+      @data = JSON.parse(resp&.body)
+    end
+  end
 rescue JSON::ParserError => e
-  @error = "JSON Parse error in response body - #{e.message}"
-  nil
+  @error = "Unable to parse the response from the API - #{e.message}"
+rescue StandardError => e
+  @error = "Unable to run this test - #{e.message}"
 end
 
-# Helper methods
-# -----------------------------------
+def v2_test
+  if @client_id.nil? || @client_secret.nil?
+    @error = 'You MUST provide a Client ID (or email) and Client Secret (or API token)!'
+  else
+    oauth2_client
 
-def params_to_hash
-  hash = {
-    host_name: params['host_name'],
-    client_id: params['client_id'],
-    client_secret: params['client_secret'],
+    if @as_oauth.nil?
+      @auth_token = @oauth_client.client_credentials.get_token
 
-    token: params["token"],
-    code: params["code"]
-  }
-  test_name_parts = test_from_params.split('+')
-  hash[:test_method] = test_name_parts[0]
-  hash[:test] = test_name_parts[1].gsub('_', '/')
-  hash
+      @payload = {} if @payload.nil?
+      resp = @auth_token.send(@test_method.to_sym, "#{@host}/api/v2/#{@test_path}", body: @payload.to_json)
+    else
+      params_to_session
+      redirect @oauth_client.auth_code.authorize_url(redirect_uri: @redirect_uri, scope: 'read_dmps')
+      # User will be redirected to /oauth2/callback above
+    end
+
+    unless %w[200 201].include?(resp&.status.to_s)
+      @error = "Unexpected response from the API - #{resp&.status}. See below for details."
+    end
+    @data = JSON.parse(resp&.body)
+  end
+rescue OAuth2::Error => e
+  @error = "Unable to authenticate - #{e.message}"
 end
 
-def test_from_params
-  buttons = params.reject { |k, _v| %w[host_name client_id client_secret token code].include?(k) }.keys
-  buttons.select { |name| name =~ /^[a-zA-Z]+\+/ }.last
-end
+# API Request Helpers
+# -------------------------------------------------------------------------
 
 def default_headers
   { 'Content-Type': 'application/json', 'Accept': 'application/json' }
 end
 
-def token_for_header
-  return {} if @inputs[:token].nil? || @inputs[:token] == ''
-
-  { 'Authorization': "Bearer #{@inputs[:token]}" }
-end
-
 def client_credentials
-  { grant_type: 'client_credentials', client_id: @inputs[:client_id], client_secret: @inputs[:client_secret] }
+  { grant_type: 'client_credentials', client_id: @client_id, client_secret: @client_secret }
 end
 
-def authorization_code
-  { grant_type: 'authorization_code', client_id: @inputs[:client_id], code: @inputs[:code] }
+def api_token_credentials
+  { grant_type: 'authorization_code', email: @client_id, code: @client_secret }
+end
+
+def token_for_header
+  return {} if @auth_token.nil? || @auth_token == ''
+
+  { 'Authorization': "Bearer #{@auth_token}" }
+end
+
+def identify_test
+  non_test_button_params = %w[host_name api_token client_id client_secret auth_token]
+
+  # Find the test button submitted
+  test_buttons = params.reject { |k, _v| non_test_button_params.include?(k) }.keys
+  clicked_button = test_buttons.select { |name| name =~ /^[a-zA-Z]+\+/ }.last || ''
+
+  # Extract the HTTP method and URL path from the name (e.g. "get+templates")
+  @test_method, @test_path, @as_oauth = clicked_button.split('+')
+end
+
+def oauth2_client
+  @oauth_client = OAuth2::Client.new(@client_id, @client_secret, { site: @host })
+  @oauth_client.auth_code.authorize_url(redirect_uri: @redirect_uri)
+end
+
+# Version Specific Helpers
+# -------------------------------------------------------------------------
+
+def v1_auth
+  # Switch the type of credentials used based on whether the client_id is an email address
+  creds = (@client_id =~ URI::MailTo::EMAIL_REGEXP) == 0 ? api_token_credentials : client_credentials
+
+  resp = HTTParty.post("#{@host}/api/v1/authenticate",
+                        body: creds.to_json,
+                        headers: @headers,
+                        follow_redirects: true,
+                        debug: true)
+
+  @error = "Unexpected response form host - #{resp&.code}. See below for details." unless resp&.code == 200
+  JSON.parse(resp&.body)['access_token']
+rescue JSON::ParserError => e
+  @error = "Unable to parse the api/v1/authenticate response - #{e.message}"
+  nil
+rescue StandardError => e
+  @error = "Unable to authenticate via api/v1/authenticate - #{e.message}"
+  nil
 end
