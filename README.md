@@ -19,6 +19,8 @@ Load the test site in your browser at `http://localhost:4567`. Then:
 
 You must have DMPRoadmap running either locally or on a server!
 
+If your version of DMPRoadmap does not support a specific version of the API, then those tests will fail! To see what versions of the API your installation supports, check the `[project root path]/app/controllers/api/` directory of your DMPRoadmap system.
+
 Please do not use this test suite to verify other organization's DMPRoadmap systems. It should only be used to test your own installations.
 
 All tests are meant to simply verify the basic request/response cycle of the API they do not test that the content of responses are accurate. Simply receiving an HTTP 200/201 is considered a successful test for this application.
