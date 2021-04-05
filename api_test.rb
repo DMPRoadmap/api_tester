@@ -1,6 +1,7 @@
 require 'sinatra'
 require 'httparty'
 require 'oauth2'
+require 'nokogiri' # For processing the results of the DMPRoadmap PDF
 
 enable :sessions
 
@@ -29,13 +30,15 @@ get '/oauth2/callback' do
   oauth2_client
 
   @auth_token = @oauth_client.auth_code.get_token(@code, redirect_uri: @redirect_uri)
+  @test_path = v2_find_a_test_plan if @test_path.include?('%{id}')
+
   resp = @auth_token.send(@test_method.to_sym, "#{@host}/api/#{@version}/#{@test_path}", body: @payload)
 
   unless %w[200 201].include?(resp&.status.to_s)
     @error = "Unexpected response from the API - #{resp&.status}. See below for details."
   end
 
-  @data = JSON.parse(resp&.body)
+  @data = (@test_path =~ /\.pdf$/).nil? ? JSON.parse(resp&.body) : resp.body.to_s
   erb(:test_it)
 rescue JSON::ParserError => e
   @error = "Unable to parse the response to the oauth2/callback - #{e.message}"
@@ -143,6 +146,7 @@ def v2_test
       @auth_token = @oauth_client.client_credentials.get_token
 
       @payload = {} if @payload.nil?
+
       resp = @auth_token.send(@test_method.to_sym, "#{@host}/api/v2/#{@test_path}", body: @payload.to_json)
     else
       params_to_session
@@ -217,4 +221,24 @@ rescue JSON::ParserError => e
 rescue StandardError => e
   @error = "Unable to authenticate via api/v1/authenticate - #{e.message}"
   nil
+end
+
+# If the test is for a specific plan then we need to first call the index path and grab the last record
+def v2_find_a_test_plan
+  path_parts = @test_path.split('/')
+  path = path_parts.compact.reject { |part| part.include?('%{id}') }.join
+
+  resp = @auth_token.send(@test_method.to_sym, "#{@host}/api/v2/#{path}", body: @payload.to_json)
+
+  unless %w[200 201].include?(resp&.status.to_s)
+    @error = "Unexpected response when trying to locate a test Plan - #{resp&.status}. See below for details."
+    @data = JSON.parse(resp&.body)
+  end
+
+  plans = JSON.parse(resp&.body)
+  id = plans['items'].last['dmp']&.fetch('dmproadmap_links', {})&.fetch('download', '') || 0
+  @test_path % { id: id.split('/').last.gsub(%r{.[a-zA-Z]+$}, '') }
+rescue JSON::ParserError => e
+  @error = "Unable to locate a Plan to test with!"
+  @data = nil
 end
