@@ -1,6 +1,6 @@
 <h2>API Token</h2>
-<p><%= @version.capitalize %> requires that you provide an API token. This value can be found on your Profile page.</p>
+<p><%= session[:version].capitalize %> requires that you provide an API token. This value can be found on your Profile page.</p>
 <div>
   <label for="api_token">API Token</label>
-  <input type="text" name="api_token" value="<%= @api_token %>"/>
+  <input type="text" name="api_token" value="<%= session[:api_token] %>"/>
 </div>

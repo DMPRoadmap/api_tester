@@ -13,8 +13,3 @@ gem 'httparty'
 # A Ruby wrapper for the OAuth 2.0 specification.
 # https://github.com/oauth-xx/oauth2
 gem 'oauth2'
-
-# Prawn is a pure Ruby PDF generation library that provides a lot of great functionality while trying
-# to remain simple and reasonably performant.
-# https://github.com/prawnpdf/prawn
-gem 'nokogiri'
