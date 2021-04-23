@@ -1,6 +1,6 @@
-<% unless @error.nil? %>
+<% unless session[:error].nil? && session[:error] != '' %>
   <div class="message errors">
-    <%= @error %>
+    <%= session[:error] %>
   </div>
 <% end %>
 <% unless @data.nil? %>
