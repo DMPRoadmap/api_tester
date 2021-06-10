@@ -1,6 +1,8 @@
 require 'sinatra'
 require 'httparty'
 
+require_relative 'services/api_v0_service'
+require_relative 'services/api_v1_service'
 require_relative 'services/api_v2_service'
 require_relative 'services/oauth_service'
 

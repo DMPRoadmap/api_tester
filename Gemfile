@@ -13,3 +13,7 @@ gem 'httparty'
 # A Ruby wrapper for the OAuth 2.0 specification.
 # https://github.com/oauth-xx/oauth2
 gem 'oauth2'
+
+# This gem is a port of Perl's Data::Faker library that generates fake data.
+# https://github.com/oauth-xx/oauth2/blob/master/lib/oauth2/access_token.rb
+gem 'faker'
