@@ -44,7 +44,7 @@ module Services
         @client_token = OAuth2::AccessToken.from_hash(@oauth_client, @session[:client_token])
       else
         p "  Requesting access token from the v2 API for the ApiClient"
-        @client_token = @oauth_client.client_credentials.get_token
+        @client_token = @oauth_client.client_credentials.get_token({ scope: 'public read_dmps create_dmps' })
       end
       @session[:client_token] = @client_token.to_hash
     rescue OAuth2::Error => e
@@ -62,7 +62,7 @@ module Services
         # We don't have an authorization code yet so reirect to the provider for signin/authorization
         p "  No authorization code available so redirecting User for OAuth approval"
         raise OauthRedirect.new(@oauth_client.auth_code.authorize_url(redirect_uri: @redirect_uri,
-                                                                      scope: 'read_dmps create_dmps'))
+                                                                      scope: 'public read_dmps create_dmps'))
       else
         p "  Requesting access token from the v2 API for this User's authorization code"
         @auth_token = @oauth_client.auth_code.get_token(@session[:code], redirect_uri: @redirect_uri)
@@ -73,7 +73,7 @@ module Services
         # Authorization code has expired
         p "  Authorization code is expired fetching a new code"
         raise OauthRedirect.new(@oauth_client.auth_code.authorize_url(redirect_uri: @redirect_uri,
-                                                                      scope: 'read_dmps create_dmps'))
+                                                                      scope: 'public read_dmps create_dmps'))
       else
         p "  OAuth error during authorization code fetch - #{e.message}"
       end
