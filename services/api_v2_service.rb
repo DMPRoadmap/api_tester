@@ -68,42 +68,14 @@ module Services
       plan_id = fetch_last_plan_id(json: plans_json)
       doi = "doi:10.1234/#{Faker::Alphanumeric.alphanumeric(number: 10)}"
       doi_json = {
-        items: [
-          dmp: {
-            dataset: [
-              {
-                title: Faker::Music::PearlJam.song,
-                type: 'dataset',
-                description: Faker::Lorem.paragraph,
-                personal_data: %w[yes no unknown].sample,
-                sensitive_data: %w[yes no unknown].sample,
-                issued: Time.now.utc.strftime("%Y-%m-%dT%H:%M:%S:%LZ"),
-                dataset_id: { type: "doi", identifier: doi },
-                distribution: [
-                  {
-                    title: Faker::Music::PearlJam.song,
-                    data_access: "open",
-                    byte_size: Faker::Number.number(digits: 5),
-                    host: {
-                      title: Faker::Lorem.sentence,
-                      description: Faker::Lorem.paragraph,
-                      url: Faker::Internet.url,
-                      dmproadmap_host_id: { type: Faker::Lorem.word, identifier: SecureRandom.uuid }
-                    },
-                    license: [
-                      {
-                        license_ref: Faker::Internet.url,
-                        start_date: Time.now.utc.strftime("%Y-%m-%dT%H:%M:%S:%LZ")
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ]
+        dmp: {
+          dmp_id: { type: "url", identifier: "#{@base_url}/plans/#{plan_id}" },
+          dmproadmap_related_identifiers: [
+            { descriptor: "is_referenced_by", type: "doi", identifier: doi }
+          ]
+        }
       }
-      run_test_for_user(test_url: "#{@base_url}/plans/#{plan_id}/datasets", method: :post, payload: doi_json)
+      run_test_for_user(test_url: "#{@base_url}/related_identifiers", method: :post, payload: doi_json)
     end
 
     private
