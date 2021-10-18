@@ -44,7 +44,7 @@ module Services
         @client_token = OAuth2::AccessToken.from_hash(@oauth_client, @session[:client_token])
       else
         p "  Requesting access token from the v2 API for the ApiClient"
-        @client_token = @oauth_client.client_credentials.get_token({ scope: 'public read_dmps edit_dmps' })
+        @client_token = @oauth_client.client_credentials.get_token({ scope: 'public read_dmps edit_dmps create_dmps' })
       end
       @session[:client_token] = @client_token.to_hash
     rescue OAuth2::Error => e
