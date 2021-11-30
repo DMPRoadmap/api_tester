@@ -43,6 +43,11 @@ post '/test_it' do
   end
 rescue Services::OauthRedirect => e
   update_session(hash: api_service.session)
+
+p e
+p "TOKEN:"
+pp @auth_token
+
   redirect e
 end
 
