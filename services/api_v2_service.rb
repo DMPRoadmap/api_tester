@@ -103,10 +103,6 @@ module Services
 
     def fetch_plan_for_user_test
       plans_json = run_test_for_user(test_url: "#{@base_url}/plans")
-
-p "JSON:"
-pp plans_json
-
       plan_id = fetch_last_plan_id(json: plans_json)
       run_test_for_user(test_url: "#{@base_url}/plans/#{plan_id}")
     end
@@ -125,7 +121,7 @@ pp plans_json
         dmp: {
           dmp_id: { type: "url", identifier: "#{@base_url}/plans/#{plan_id}" },
           dmproadmap_related_identifiers: [
-            { descriptor: "is_referenced_by", type: "doi", identifier: doi, work_type: "article" }
+            { descriptor: "documents", type: "doi", identifier: doi, work_type: "dataset" }
           ]
         }
       }
