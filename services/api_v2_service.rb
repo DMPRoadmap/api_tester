@@ -26,7 +26,7 @@ module Services
     # ApiClient Tests
     # ---------------
     def fetch_templates_for_client_test
-      run_test_for_client(test_url: "#{@base_url}/templates")
+      run_test_for_client(test_url: "#{@base_url}/templates?show_phases=true")
     end
 
     def fetch_plans_for_client_test
