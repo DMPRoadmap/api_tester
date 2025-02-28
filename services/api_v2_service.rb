@@ -142,7 +142,7 @@ module Services
       @oauth_service.authorize_user
       p "  Requesting #{test_url} for the User with token: #{@oauth_service.auth_token.token}"
       response = @oauth_service.auth_token.get(test_url) if method == :get
-      response = @oauth_service.auth_token.post(test_url, { body: payload.to_json }) if method == :post
+      response = @oauth_service.auth_token.post(test_url, { body: payload.to_json, headers: { "Content-Type": "application/json" } }) if method == :post
       process_response(test_url: test_url, response: response)
     end
 
